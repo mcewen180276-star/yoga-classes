@@ -7,11 +7,45 @@ const slug=s=>String(s).toLowerCase().replace(/[^a-z0-9-]/g,'-');
 function valid(x){return x&&typeof x==='object'&&typeof x.title==='string'&&Array.isArray(x.poses)&&x.poses.length>0&&x.poses.length<1500}
 function total(c){return Math.round(c.poses.reduce((a,p)=>a+Math.max(0,Number(p.seconds)||0),0)/60)}
 function add(x){if(!valid(x))throw Error('Class must have a title and a nonempty poses array');const c={...x,id:String(x.id||slug(x.title)),category:String(x.category||'Yoga')};const i=classes.findIndex(v=>v.id===c.id);if(i>=0)classes[i]=c;else classes.push(c);return c}
-function render(){const query=$('search').value.toLowerCase().trim(),cat=$('category').value;const cats=[...new Set(classes.map(c=>c.category||'Yoga'))].sort();$('category').innerHTML='<option value="">All categories</option>'+cats.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');$('category').value=cats.includes(cat)?cat:'';const items=classes.filter(c=>(!$('category').value||c.category===$('category').value)&&(!query||(c.title+' '+c.category+' '+(c.description||'')).toLowerCase().includes(query)));$('cards').replaceChildren();for(const c of items){const b=document.createElement('button');b.className='card class';const strong=document.createElement('strong');strong.textContent=c.title;const desc=document.createElement('span');desc.textContent=c.description||'Guided yoga class with individual pose timings';const meta=document.createElement('small');meta.textContent=(c.category||'Yoga')+' · '+total(c)+' min · '+c.poses.length+' poses';b.append(strong,desc,meta);b.onclick=()=>openClass(c);$('cards').append(b)}if(!items.length){const p=document.createElement('p');p.className='card muted';p.textContent=classes.length?'No classes match these filters.':'No classes published yet. Add class JSON files and update classes/manifest.json.';$('cards').append(p)}}
+function render(){const query=$('search').value.toLowerCase().trim(),cat=$('category').value;const cats=[...new Set(classes.map(c=>c.category||'Yoga'))].sort();$('category').innerHTML='<option value="">All categories</option>'+cats.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');$('category').value=cats.includes(cat)?cat:'';const items=classes.filter(c=>(!$('category').value||c.category===$('category').value)&&(!query||(c.title+' '+c.category+' '+(c.description||'')).toLowerCase().includes(query)));$('cards').replaceChildren();for(const c of items){const b=document.createElement('button');b.className='card class';const strong=document.createElement('strong');strong.textContent=c.title;const desc=document.createElement('span');desc.textContent=c.description||'Guided yoga class with individual pose timings';const meta=document.createElement('small');meta.textContent=(c.category||'Yoga')+' · '+total(c)+' min · '+c.poses.length+' poses';b.append(strong,desc,meta);b.onclick=()=>openClass(c);$('cards').append(b)}if(!items.length){const p=document.createElement('p');p.className='card muted';p.textContent=classes.length?'No classes match these filters.':'No classes published yet. Upload your class JSON files to the classes folder on GitHub.';$('cards').append(p)}}
 function openClass(c){current=c;$('selectedTitle').textContent=c.title;const json=JSON.stringify(c).replace(/</g,'\u003c');$('player').srcdoc=playerTemplate.replace('__CLASS_DATA__',json);$('catalogue').classList.add('hide');$('playerArea').classList.remove('hide');window.scrollTo(0,0)}
 $('back').onclick=()=>{$('player').srcdoc='';$('playerArea').classList.add('hide');$('catalogue').classList.remove('hide');current=null};
-$('search').oninput=render;$('category').onchange=render;$('import').onclick=()=>$('file').click();$('file').onchange=async e=>{let ok=0;for(const f of e.target.files){try{add(JSON.parse(await f.text()));ok++}catch(err){$('notice').textContent='Could not open '+f.name+': '+err.message}}if(ok)$('notice').textContent=ok+' class file(s) opened on this device. To publish for everyone, upload the JSON to GitHub and add it to classes/manifest.json.';render();e.target.value=''};
-async function loadPublished(){try{const response=await fetch('classes/manifest.json',{cache:'no-store'});if(!response.ok)throw Error('manifest.json not found');const m=await response.json();if(!Array.isArray(m.classes))throw Error('manifest must contain a classes array');const results=await Promise.allSettled(m.classes.map(async entry=>{const file=typeof entry==='string'?entry:entry.file;if(typeof file!=='string'||!/^[-a-zA-Z0-9_./]+\.json$/.test(file)||file.includes('..')||file.startsWith('/'))throw Error('Invalid class file path');const r=await fetch('classes/'+file,{cache:'no-store'});if(!r.ok)throw Error(file+': HTTP '+r.status);const x=await r.json();if(entry&&typeof entry==='object'){if(entry.category)x.category=entry.category;if(entry.description)x.description=entry.description}return add(x)}));catalogue=results.filter(x=>x.status==='fulfilled').map(x=>x.value);const fails=results.filter(x=>x.status==='rejected');$('notice').textContent=catalogue.length+' published class(es) loaded'+(fails.length?'; '+fails.length+' class file(s) failed to load.':'')+'.';render()}catch(err){$('notice').textContent='Published classes are unavailable ('+err.message+'). If you opened this as a local HTML file, use GitHub Pages or Open a class JSON file.';render()}}
+$('search').oninput=render;$('category').onchange=render;$('import').onclick=()=>$('file').click();$('file').onchange=async e=>{let ok=0;for(const f of e.target.files){try{add(JSON.parse(await f.text()));ok++}catch(err){$('notice').textContent='Could not open '+f.name+': '+err.message}}if(ok)$('notice').textContent=ok+' class file(s) opened on this device. To publish for everyone, upload the JSON file to the classes folder on GitHub.';render();e.target.value=''};
+async function loadPublished(){
+ let entries=[],warning='';
+ try{
+  const host=location.hostname.toLowerCase();
+  if(host.endsWith('.github.io')){
+   const owner=host.split('.')[0],repo=decodeURIComponent(location.pathname.split('/').filter(Boolean)[0]||owner+'.github.io');
+   const api='https://api.github.com/repos/'+encodeURIComponent(owner)+'/'+encodeURIComponent(repo)+'/contents/classes';
+   const r=await fetch(api,{headers:{'Accept':'application/vnd.github+json'},cache:'no-store'});
+   if(!r.ok)throw Error('GitHub class listing HTTP '+r.status);
+   const files=await r.json();
+   if(!Array.isArray(files))throw Error('GitHub class folder not found');
+   entries=files.filter(f=>f.type==='file'&&/^[\w-]+\.json$/i.test(f.name)&&f.name!=='manifest.json').map(f=>f.name);
+  }else{
+   const r=await fetch('classes/manifest.json',{cache:'no-store'});
+   if(!r.ok)throw Error('Class list unavailable');
+   entries=(await r.json()).classes||[];
+  }
+ }catch(err){
+  warning='Automatic discovery unavailable ('+err.message+'). ';
+  try{const r=await fetch('classes/manifest.json',{cache:'no-store'});if(r.ok)entries=(await r.json()).classes||[]}catch(_){}
+ }
+ const results=await Promise.allSettled(entries.map(async entry=>{
+  const file=typeof entry==='string'?entry:entry.file;
+  if(typeof file!=='string'||!/^[\w-]+\.json$/i.test(file))throw Error('Invalid filename');
+  const r=await fetch('classes/'+encodeURIComponent(file),{cache:'no-store'});
+  if(!r.ok)throw Error(file+' HTTP '+r.status);
+  const x=await r.json();if(entry&&typeof entry==='object'){if(entry.category)x.category=entry.category;if(entry.description)x.description=entry.description}
+  return add(x);
+ }));
+ catalogue=results.filter(x=>x.status==='fulfilled').map(x=>x.value);
+ const fails=results.filter(x=>x.status==='rejected');
+ $('notice').textContent=warning+catalogue.length+' published class(es) loaded'+(fails.length?'; '+fails.length+' file(s) could not load.':'')+'.';
+ render();
+}
+
 $('refresh').onclick=()=>{classes=[];loadPublished()};render();loadPublished();
 })();
 </script></body></html>
