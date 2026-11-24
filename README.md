@@ -1,27 +1,11 @@
-# Yoga Companion Class Library — GitHub Pages
+# Yoga Companion Library — easy publishing
 
-1. Create a new **public** GitHub repository (e.g. `yoga-companion-library`).
-2. Upload `index.html`, the `classes` folder, and its `manifest.json` file to the repository root.
-3. In repository Settings → Pages, select **Deploy from a branch**, branch **main**, folder **/(root)**.
-4. Open your Pages URL once published. The catalogue will display all JSON files listed in the manifest.
+1. Create a public GitHub repository and upload the CONTENTS of this ZIP (including `index.html` and the `classes` folder).
+2. In GitHub Settings → Pages, select Deploy from a branch → main → /(root), then Save.
+3. Open Class Builder V2.9, create or load a Yoga class, then press **Export Class for Shared Library (JSON)**.
+4. On GitHub, open the `classes` folder → Add file → Upload files. Upload the downloaded `.json` file and commit.
+5. Open or refresh your GitHub Pages website. The new class appears automatically. You do NOT need to edit `manifest.json`.
 
-## Publish your own classes
+Keep using **Create Client Mini App (HTML)** when you want to send a single class as its own standalone file.
 
-In Yoga Class Builder V2.8 or Fitness Master Hub V17.5, open/create a class and click **Export Class for Shared Library (JSON)**. Download the `.json` file. Upload it to the `classes/` folder in the GitHub repository. Edit `classes/manifest.json` to add the filename, for example:
-
-```json
-{
-  "classes": [
-    {"file":"my-hatha-class.json","category":"Hatha","description":"Gentle full-body session"},
-    {"file":"yoga-for-runners.json","category":"Sport-specific"}
-  ]
-}
-```
-
-Commit changes. Refresh the published page to see new classes. Removing a file from the manifest hides it from the catalogue. Keep names exact, including capitalisation.
-
-The catalogue does **not** automatically discover files uploaded to GitHub: you must update the manifest. You can still send individual mini-app HTML files using the separate **Create Client Mini App (HTML)** button.
-
-The website is public to anyone with the URL. Only upload classes you intend to share. Classes are not saved back to GitHub by visitors. Personal music files are selected locally on each visitor's device.
-
-For local testing without GitHub, open `index.html` and use **Open a class JSON file**. Published-class loading requires an HTTP(S) server, such as GitHub Pages.
+Note: GitHub Pages may take a few minutes to update. Automatic discovery uses GitHub's public repository API, which can be rate-limited. If GitHub's API is unavailable, the library falls back to the optional `classes/manifest.json` list. The repository must be public. Class JSON filenames should contain only letters, numbers, underscores and hyphens.
